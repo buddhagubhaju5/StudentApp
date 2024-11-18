@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management</title>
+    <style>
+        /* General Body Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Box Model for App Container */
+        #app {
+            max-width: 600px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Header Style */
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Form Styles */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        /* Student List Styles */
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #e9ecef;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Student Management System</h1>
+        <form id="studentForm">
+            <input type="text" id="firstName" placeholder="First Name" required />
+            <input type="text" id="lastName" placeholder="Last Name" required />
+            <input type="text" id="id" placeholder="Student ID" required />
+            <input type="text" id="semester" placeholder="Semester" required />
+            <button type="submit">Add Student</button>
+        </form>
+        <ul id="studentList"></ul>
+    </div>
+    <script>
+        const API_URL = 'http://localhost:5000/students';
+
+        document.getElementById('studentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const student = {
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                id: document.getElementById('id').value,
+                semester: document.getElementById('semester').value,
+            };
+
+            const response = await fetch(`${API_URL}/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(student),
+            });
+
+            if (response.ok) {
+                alert('Student added successfully!');
+                document.getElementById('studentForm').reset();
+                // Reload student list (not implemented here for brevity)
+            } else {
+                alert('Error adding student.');
+            }
+        });
+    </script>
+</body>
+</html>
