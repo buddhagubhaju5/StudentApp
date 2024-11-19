@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #app {
+            width: 600px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ccc;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-buttons button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        .action-buttons button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h1>Course Management System</h1>
+        <form id="courseForm">
+            <input type="text" id="courseName" placeholder="Course Name" required />
+            <input type="text" id="courseCode" placeholder="Course Code" required />
+            <button type="submit">Add Course</button>
+            <p><a href="index.html">Update Students</a></p>
+
+        </form>
+        <div>
+            <h2>Available Courses</h2>
+            <table id="courseTable">
+                <thead>
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Course Code</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const COURSE_API_URL = 'http://localhost:5000/courses';
+        let editingCourseId = null;
+
+        async function fetchCourses() {
+            const response = await fetch(COURSE_API_URL);
+            const courses = await response.json();
+            const courseTableBody = document.querySelector('#courseTable tbody');
+            courseTableBody.innerHTML = '';
+
+            courses.forEach(course => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${course.name}</td>
+                    <td>${course.code}</td>
+                    <td class="action-buttons">
+                        <button onclick="editCourse('${course._id}')">Edit</button>
+                        <button onclick="deleteCourse('${course._id}')">Delete</button>
+                    </td>
+                `;
+                courseTableBody.appendChild(row);
+            });
+        }
+
+        async function deleteCourse(courseId) {
+            const response = await fetch(`${COURSE_API_URL}/${courseId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                alert('Course deleted successfully!');
+                fetchCourses();  // Reload course list
+            } else {
+                alert('Error deleting course.');
+            }
+        }
+
+        async function editCourse(courseId) {
+            const response = await fetch(`${COURSE_API_URL}/${courseId}`);
+            const course = await response.json();
+
+            // Prefill form with current course data
+            document.getElementById('courseName').value = course.name;
+            document.getElementById('courseCode').value = course.code;
+
+            // Update form submission logic for editing
+            const submitButton = document.querySelector('form button');
+            submitButton.textContent = 'Update Course';
+            editingCourseId = courseId;
+
+            // Update the course on form submit
+            document.getElementById('courseForm').onsubmit = async (e) => {
+                e.preventDefault();
+
+                const updatedCourse = {
+                    name: document.getElementById('courseName').value,
+                    code: document.getElementById('courseCode').value,
+                };
+
+                const updateResponse = await fetch(`${COURSE_API_URL}/${editingCourseId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedCourse),
+                });
+
+                if (updateResponse.ok) {
+                    alert('Course updated successfully!');
+                    document.getElementById('courseForm').reset();
+                    submitButton.textContent = 'Add Course';
+                    editingCourseId = null;
+                    fetchCourses();  // Reload course list
+                } else {
+                    alert('Error updating course.');
+                }
+            };
+        }
+
+        document.getElementById('courseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (editingCourseId) {
+                return;  // Prevent adding a new course when editing
+            }
+
+            const course = {
+                name: document.getElementById('courseName').value,
+                code: document.getElementById('courseCode').value,
+            };
+
+            const response = await fetch(COURSE_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(course),
+            });
+
+            if (response.ok) {
+                alert('Course added successfully!');
+                fetchCourses();
+                document.getElementById('courseForm').reset();
+            } else {
+                alert('Error adding course.');
+            }
+        });
+
+        fetchCourses();
+    </script>
+</body>
+
+</html>

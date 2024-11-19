@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +20,7 @@
 
         /* Box Model for App Container */
         #app {
-            max-width: 600px;
+            width: 800px;
             background: #ffffff;
             border: 1px solid #ccc;
             border-radius: 8px;
@@ -44,7 +45,9 @@
             margin-bottom: 20px;
         }
 
-        input, button {
+        input,
+        select,
+        button {
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ccc;
@@ -63,22 +66,76 @@
             background-color: #218838;
         }
 
-        /* Student List Styles */
-        ul {
-            list-style: none;
-            padding: 0;
+        /* Search Container */
+        .search-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
         }
 
-        li {
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #e9ecef;
+        .search-container input {
+            padding: 8px;
+            font-size: 16px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            box-sizing: border-box;
+            width: 50%;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ccc;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-buttons button {
+            padding: 5px 10px;
+            font-size: 14px;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .action-buttons button.edit {
+            background-color: #007bff;
+        }
+
+        .action-buttons button.edit:hover {
+            background-color: #0056b3;
+        }
+
+        .action-buttons button.delete {
+            background-color: #dc3545;
+        }
+
+        .action-buttons button.delete:hover {
+            background-color: #c82333;
         }
     </style>
 </head>
+
 <body>
     <div id="app">
         <h1>Student Management System</h1>
@@ -87,37 +144,220 @@
             <input type="text" id="lastName" placeholder="Last Name" required />
             <input type="text" id="id" placeholder="Student ID" required />
             <input type="text" id="semester" placeholder="Semester" required />
+
+            <!-- Dynamic Course Dropdown -->
+            <label for="courses">Select Courses:</label>
+            <select id="courses" name="courses" multiple size="5">
+                <!-- Course options will be populated dynamically here -->
+            </select>
+            <p><a href="course.html">Update Courses</a></p>
+
             <button type="submit">Add Student</button>
         </form>
-        <ul id="studentList"></ul>
+
+        <div class="search-container">
+            <h2>Available Students</h2>
+            <input type="text" id="searchStudent" placeholder="Search by name..." oninput="filterStudents()" />
+        </div>
+
+        <table id="studentTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>ID</th>
+                    <th>Semester</th>
+                    <th>Courses</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be populated dynamically -->
+            </tbody>
+        </table>
     </div>
+
     <script>
         const API_URL = 'http://localhost:5000/students';
+        const COURSE_API_URL = 'http://localhost:5000/courses';
+        let editingStudentId = null; // Tracks the student being edited
+        let studentsData = []; // Store all students
+        let coursesData = []; // Store all courses
 
+        // Check if the student ID is already taken
+        function isStudentIdDuplicate(studentId) {
+            return studentsData.some(student => student.id === studentId);
+        }
+
+        // Fetch and display the list of students
+        async function fetchStudents() {
+            const response = await fetch(API_URL);
+            studentsData = await response.json(); // Store data globally
+            displayStudents(studentsData);
+        }
+
+        // Display students in the table
+        function displayStudents(students) {
+            const studentTableBody = document.querySelector('#studentTable tbody');
+            studentTableBody.innerHTML = '';
+
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.firstName} ${student.lastName}</td>
+                    <td>${student.id}</td>
+                    <td>${student.semester}</td>
+                    <td>${student.courses.join(', ')}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="edit" onclick="editStudent('${student._id}')">Edit</button>
+                            <button class="delete" onclick="deleteStudent('${student._id}')">Delete</button>
+                        </div>
+                    </td>
+                `;
+                studentTableBody.appendChild(row);
+            });
+        }
+
+        // Function to filter students by name
+        function filterStudents() {
+            const searchValue = document.getElementById('searchStudent').value.toLowerCase();
+            const filteredStudents = studentsData.filter(student =>
+                `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchValue)
+            );
+            displayStudents(filteredStudents);
+        }
+
+        // Function to delete a student
+        async function deleteStudent(studentId) {
+            // Ask for confirmation before deleting the student record
+            const confirmed = confirm("Are you sure you want to delete this student record?");
+
+            if (confirmed) {
+                // Proceed with the deletion if the user confirms
+                const response = await fetch(`${API_URL}/${studentId}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    alert('Student deleted successfully!');
+                    fetchStudents(); // Reload student list
+                } else {
+                    alert('Error deleting student.');
+                }
+            } else {
+                // Do nothing if the user cancels the deletion
+                alert('Student deletion canceled.');
+            }
+        }
+
+        // Function to edit a student
+        async function editStudent(studentId) {
+            const response = await fetch(`${API_URL}/${studentId}`);
+            const student = await response.json();
+
+            // Prefill form with current student data
+            document.getElementById('firstName').value = student.firstName;
+            document.getElementById('lastName').value = student.lastName;
+            document.getElementById('id').value = student.id;
+            document.getElementById('semester').value = student.semester;
+
+            // Set selected courses in the dropdown
+            const selectElement = document.getElementById('courses');
+            Array.from(selectElement.options).forEach(option => {
+                option.selected = student.courses.includes(option.value);
+            });
+
+            // Change button to "Update Student"
+            const submitButton = document.querySelector('form button');
+            submitButton.textContent = 'Update Student';
+
+            // Set editing mode
+            editingStudentId = studentId;
+        }
+
+        // Add or update a student
         document.getElementById('studentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const studentId = document.getElementById('id').value;
+
+            // Check if student ID already exists
+            if (isStudentIdDuplicate(studentId) && !editingStudentId) {
+                alert('This student ID is already taken. Please use a unique student ID.');
+                return; // Prevent form submission
+            }
+            const selectedCourses = Array.from(document.getElementById('courses').selectedOptions)
+                .map(option => option.value);
 
             const student = {
                 firstName: document.getElementById('firstName').value,
                 lastName: document.getElementById('lastName').value,
                 id: document.getElementById('id').value,
                 semester: document.getElementById('semester').value,
+                courses: selectedCourses,
             };
 
-            const response = await fetch(`${API_URL}/add`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(student),
-            });
+            let response;
 
-            if (response.ok) {
-                alert('Student added successfully!');
-                document.getElementById('studentForm').reset();
-                // Reload student list (not implemented here for brevity)
+            if (editingStudentId) {
+                // Update existing student
+                response = await fetch(`${API_URL}/${editingStudentId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(student),
+                });
+
+                if (response.ok) {
+                    alert('Student updated successfully!');
+                } else {
+                    alert('Error updating student.');
+                }
+
+                editingStudentId = null; // Clear editing mode
+                document.querySelector('form button').textContent = 'Add Student';
             } else {
-                alert('Error adding student.');
+                // Add new student
+                response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(student),
+                });
+
+                if (response.ok) {
+                    alert('Student added successfully!');
+                } else {
+                    alert('Error adding student.');
+                }
             }
+
+            document.getElementById('studentForm').reset();
+            fetchStudents(); // Reload student list
         });
+
+        // Fetch available courses
+        async function fetchCourses() {
+            const response = await fetch(COURSE_API_URL);
+            coursesData = await response.json(); // Store data globally
+            displayCourses(coursesData);
+        }
+
+        // Display available courses as options in the dropdown
+        function displayCourses(courses) {
+            const courseSelect = document.getElementById('courses');
+            courseSelect.innerHTML = ''; // Clear existing options
+
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.code;
+                option.textContent = `${course.name} (${course.code})`;
+                courseSelect.appendChild(option);
+            });
+        }
+
+        // Load data on page load
+        fetchStudents();
+        fetchCourses();
     </script>
 </body>
+
 </html>
